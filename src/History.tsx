@@ -106,6 +106,7 @@ export class HistoryView extends React.Component<HistoryProps, {}> {
     render() {
         konsole.log("History props", this);
         let content;
+
         if (this.props.size.width !== undefined) {
             if (this.props.format.carouselMargin === undefined) {
                 // For measuring carousels we need a width known to be larger than the chat itself
@@ -217,6 +218,35 @@ export interface WrappedActivityProps {
     onClickRetry: React.MouseEventHandler<HTMLAnchorElement>
 }
 
+/* avatar will read in image url, bg color, and initials */
+export interface AvatarElementProps {
+    imageUrl?: string;
+    initials?: string;
+    color?: string;
+}
+
+export class AvatarElement extends React.Component<AvatarElementProps, {}>{
+    constructor(props : AvatarElementProps){
+        super(props);
+    }
+
+    render() {
+
+        if(this.props.imageUrl != null){
+            //add background image url to styles
+        } else {
+            //process initials / initial coloring
+
+        }
+
+        return (
+            <div className={ 'wc-avatar-icon' }>
+                <span className={ 'wc-avatar-text'}>{this.props.initials}</span>
+            </div>
+        );
+    } 
+}
+
 export class WrappedActivity extends React.Component<WrappedActivityProps, {}> {
     public messageDiv: HTMLDivElement;
 
@@ -225,6 +255,42 @@ export class WrappedActivity extends React.Component<WrappedActivityProps, {}> {
     }
 
     render () {
+
+        //--------------------------
+        //      Avatar Stuff
+
+        /*
+         *   Style 1: picture
+         *   Style 2: first initial
+         *   Style 3: both initials
+         */
+        let avatarOption = "1";
+        let avatarInitials = "TA";
+        let avatarVisible = "both"; //'both', 'user', 'bot'
+
+        let avatarElement = null;
+        let avatarClass = "";
+        if(avatarOption != null){
+            avatarClass = "wc-has-avatar";
+        }
+        switch (avatarOption) {
+            case "1":
+                //render image
+                avatarElement = <AvatarElement initials={avatarInitials} />;
+                break;
+            case "2":
+                //render initial
+                break;
+            case "3":
+                //render colored initials
+                break;
+            default:
+                break;
+        }
+
+        //---------------------------
+
+
         let timeLine: JSX.Element;
         switch (this.props.activity.id) {
             case undefined:
@@ -264,7 +330,8 @@ export class WrappedActivity extends React.Component<WrappedActivityProps, {}> {
 
         return (
             <div data-activity-id={ this.props.activity.id } className={ wrapperClassName } onClick={ this.props.onClickActivity }>
-                <div className={ 'wc-message wc-message-from-' + who } ref={ div => this.messageDiv = div }>
+                <div className={ 'wc-message wc-message-from-' + who + " " + avatarClass } ref={ div => this.messageDiv = div }>
+                    {avatarElement}
                     <div className={ contentClassName }>
                         <svg className="wc-message-callout">
                             <path className="point-left" d="m0,6 l6 6 v-12 z" />

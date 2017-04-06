@@ -12,6 +12,11 @@ $headerTotalHeight: 38px;
 
 $actionTransition: .2s cubic-bezier(0,0,.5,1);
 
+/* avatar variables */
+$avatar-icon-radius: 36px !default;
+$avatar-icon-spacing: 6px !default;
+$avatar-icon-radius-narrow: 25px !default;
+
 /* reset */
 
     body .wc-app, .wc-app button, .wc-app input, .wc-app textarea {
@@ -239,6 +244,8 @@ $actionTransition: .2s cubic-bezier(0,0,.5,1);
         box-shadow: 0px 1px 1px 0px $c_shadow;
         padding: 8px;
         word-break: break-word;
+        //avatar modification
+        float: right;
       }
 
     .wc-message-content.clickable {
@@ -271,6 +278,91 @@ $actionTransition: .2s cubic-bezier(0,0,.5,1);
         color: $c_textLight;
         font-size: 11px;
         margin-top: 5px;
+    }
+
+/* avatar stuff */
+
+    @mixin wc-avatar-icon(
+        $avatar-dimensions: $avatar-icon-radius,
+        $margin: $avatar-icon-spacing,
+        $fromUser: false,
+        $bg-image: "none"
+    ) {
+        height: $avatar-dimensions;
+        width: $avatar-dimensions;
+
+        //toggle icon side
+        @if $fromUser {
+            margin-left: $margin;
+            float: right;
+        } @else {
+            margin-right: $margin;
+            float: left;
+        }
+
+        border-radius: $avatar-dimensions;
+        background-image: $bg-image;
+        background-color: red;
+        text-align: center;
+
+    }
+
+    .wc-has-avatar {
+
+        &.wc-message {
+            max-width: 90%;
+        }
+        //allow room for icon
+        .wc-message-content {
+            //sorry for weird number :(
+            max-width: 84%;
+            //easier positioning for callout arrow
+            position: relative;
+        }
+
+        //float on left
+        &.wc-message-from-bot {
+            .wc-avatar-icon {
+                @include wc-avatar-icon($fromUser: false);
+            }
+        }
+        //float on right
+        &.wc-message-from-me {
+            .wc-avatar-icon {
+                @include wc-avatar-icon($fromUser: true);
+            }
+        }
+
+        .wc-avatar-text {
+            text-transform: capitalize;
+            line-height: $avatar-icon-radius;
+            vertical-align: middle;
+            color: white;
+            font-family: "Segoe UI";
+        }
+    }
+
+    /* narrow view fixes */
+    .wc-narrow {
+        .wc-has-avatar {
+            //allow room for icon
+            &.wc-message {
+                max-width: 95%;
+            }
+            .wc-message-content {
+                max-width: 78%;
+                //easier positioning for callout arrow
+                position: relative;
+            } 
+        }
+    }
+    /* normal view fixes */
+    .wc-wide {
+        .wc-has-avatar {
+            .wc-message-content {
+                max-width: 91%;
+            }
+        }
     }
 
 /* cards */
@@ -550,6 +642,7 @@ $actionTransition: .2s cubic-bezier(0,0,.5,1);
     .wc-message-from-me svg.wc-message-callout {
         right: -6px;
     }
+    
 
 /* from bot */
 

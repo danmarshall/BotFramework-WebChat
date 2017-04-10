@@ -12,6 +12,8 @@ $headerTotalHeight: 38px;
 
 $actionTransition: .2s cubic-bezier(0,0,.5,1);
 
+$messageContentPadding: 8px;
+
 /* avatar variables */
 $avatar-icon-radius: 36px !default;
 $avatar-icon-spacing: 6px !default;
@@ -242,7 +244,7 @@ $avatar-icon-radius-narrow: 25px !default;
     .wc-message-content {
         border-radius: 2px;
         box-shadow: 0px 1px 1px 0px $c_shadow;
-        padding: 8px;
+        padding: $messageContentPadding;
         word-break: break-word;
         //avatar modification
         float: right;
@@ -285,8 +287,7 @@ $avatar-icon-radius-narrow: 25px !default;
     @mixin wc-avatar-icon(
         $avatar-dimensions: $avatar-icon-radius,
         $margin: $avatar-icon-spacing,
-        $fromUser: false,
-        $bg-image: "none"
+        $fromUser: false
     ) {
         height: $avatar-dimensions;
         width: $avatar-dimensions;
@@ -301,7 +302,6 @@ $avatar-icon-radius-narrow: 25px !default;
         }
 
         border-radius: $avatar-dimensions;
-        background-image: $bg-image;
         background-color: red;
         text-align: center;
 
@@ -314,8 +314,9 @@ $avatar-icon-radius-narrow: 25px !default;
         }
         //allow room for icon
         .wc-message-content {
-            //sorry for weird number :(
-            max-width: 84%;
+            // message content should take up 100% of parent container,
+            // minus the sum of the avatar width, margin, and horizontal padding
+            width: calc(100% - #{$avatar-icon-radius + $avatar-icon-spacing} - #{2 * $messageContentPadding});
             //easier positioning for callout arrow
             position: relative;
         }
@@ -324,6 +325,8 @@ $avatar-icon-radius-narrow: 25px !default;
         &.wc-message-from-bot {
             .wc-avatar-icon {
                 @include wc-avatar-icon($fromUser: false);
+                //bot will always at least have a default background image
+                background-image: url('https://imgur.com/RFuo3YA.png') !important;
             }
         }
         //float on right
@@ -349,21 +352,9 @@ $avatar-icon-radius-narrow: 25px !default;
             &.wc-message {
                 max-width: 95%;
             }
-            .wc-message-content {
-                max-width: 78%;
-                //easier positioning for callout arrow
-                position: relative;
-            } 
         }
     }
-    /* normal view fixes */
-    .wc-wide {
-        .wc-has-avatar {
-            .wc-message-content {
-                max-width: 91%;
-            }
-        }
-    }
+
 
 /* cards */
 

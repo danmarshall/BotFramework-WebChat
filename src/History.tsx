@@ -231,7 +231,7 @@ export class AvatarElement extends React.Component<AvatarElementProps, {}>{
     render() {
 
         let initials = "";
-        let style = {};
+        let style : any = {};
         let options = this.props.options;
 
         const iconClass = classList(

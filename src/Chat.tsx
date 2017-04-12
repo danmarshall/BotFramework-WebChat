@@ -8,8 +8,20 @@ import { Activity, Media, IBotConnection, User, MediaType, DirectLine, DirectLin
 import { createStore, ChatActions } from './Store';
 import { Provider } from 'react-redux';
 
+export interface AvatarOptions {
+    showMyAvatar?: boolean;
+    showTheirAvatar?: boolean;
+    avatarPalette?: string[];
+    paletteIndex?: number,
+    botImgUrl?: string;
+    userImgUrl?: string;
+    avatarStyle?: string;
+    userInitials?: string;
+}
+
 export interface FormatOptions {
-    showHeader?: boolean
+    showHeader?: boolean;
+    avatarOptions?: AvatarOptions;
 }
 
 export type ActivityOrID = {
@@ -179,7 +191,7 @@ export class Chat extends React.Component<ChatProps, {}> {
                 <div className="wc-chatview-panel" ref={ div => this.chatviewPanel = div }>
                     { header }
                     <MessagePane setFocus={ () => this.setFocus() }>
-                        <History setFocus={ () => this.setFocus() }/>
+                        <History setFocus={ () => this.setFocus() } avatarOptions={state.format.options.avatarOptions}/>
                     </MessagePane>
                     <Shell />
                     { resize }

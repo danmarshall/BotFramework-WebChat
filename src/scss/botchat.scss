@@ -292,7 +292,7 @@ $avatar-icon-radius-narrow: 25px !default;
         height: $avatar-dimensions;
         width: $avatar-dimensions;
 
-        //toggle icon side
+        // toggle icon side
         @if $fromUser {
             margin-left: $margin;
             float: right;
@@ -312,27 +312,33 @@ $avatar-icon-radius-narrow: 25px !default;
         &.wc-message {
             max-width: 90%;
         }
-        //allow room for icon
+        // allow room for icon
         .wc-message-content {
+            // easier positioning for callout arrow
+            position: relative;
             // message content should take up 100% of parent container,
             // minus the sum of the avatar width, margin, and horizontal padding
             width: calc(100% - #{$avatar-icon-radius + $avatar-icon-spacing} - #{2 * $messageContentPadding});
-            //easier positioning for callout arrow
-            position: relative;
         }
 
-        //float on left
+        // float on left
         &.wc-message-from-bot {
             .wc-avatar-icon {
                 @include wc-avatar-icon($fromUser: false);
-                //bot will always at least have a default background image
+                // bot will always at least have a default background image
                 background-image: url('https://imgur.com/RFuo3YA.png') !important;
             }
+            .wc-message-content {
+                float: left;
+            }
         }
-        //float on right
+        // float on right
         &.wc-message-from-me {
             .wc-avatar-icon {
                 @include wc-avatar-icon($fromUser: true);
+            }
+            .wc-message-content {
+                float: right;
             }
         }
 
@@ -343,12 +349,21 @@ $avatar-icon-radius-narrow: 25px !default;
             color: white;
             font-family: "Segoe UI";
         }
+        .wc-avatar-hidden {
+            display: none;
+        }
+        // fix for shrinking of parent container due to 'display: none' on icon
+        &.wc-hiding-avatar {
+            .wc-message-content {
+                width: auto;
+            }
+        }
     }
 
     /* narrow view fixes */
     .wc-narrow {
         .wc-has-avatar {
-            //allow room for icon
+            // allow room for icon
             &.wc-message {
                 max-width: 95%;
             }

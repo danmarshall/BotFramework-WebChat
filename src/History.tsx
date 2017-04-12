@@ -3,7 +3,7 @@ import { Activity, Message, User } from 'botframework-directlinejs';
 import { ChatState, FormatState, SizeState } from './Store';
 import { Dispatch, connect } from 'react-redux';
 import { ActivityView } from './ActivityView';
-import { konsole, classList, doCardAction, sendMessage } from './Chat';
+import { konsole, classList, doCardAction, sendMessage, AvatarOptions } from './Chat';
 
 export interface HistoryProps {
     format: FormatState,
@@ -220,9 +220,8 @@ export interface WrappedActivityProps {
 
 /* avatar will read in image url, bg color, and initials */
 export interface AvatarElementProps {
-    imageUrl?: string;
-    initials?: string;
-    color?: string;
+    options: AvatarOptions;
+    fromMe: boolean;
 }
 
 export class AvatarElement extends React.Component<AvatarElementProps, {}>{
@@ -232,18 +231,47 @@ export class AvatarElement extends React.Component<AvatarElementProps, {}>{
 
     render() {
 
-        if(this.props.imageUrl != null){
+        let initials = "";
+        let style = {};
+        let options = this.props.options;
+
+        const iconClass = classList(
+            "wc-avatar-icon",
+            (this.props.fromMe && !options.showMyAvatar) && "wc-avatar-hidden",
+            (!this.props.fromMe && !options.showTheirAvatar) && "wc-avatar-hidden"
+        );
+
+        if(options.avatarStyle === "img"){
             //add background image url to styles
+            style['backgroundImage'] = 'url(' + options.userImgUrl + ')';
         } else {
             //process initials / initial coloring
+            if(options.avatarStyle === "firstInitial"){
+                //use first initial
+                initials = options.userInitials.slice(0, 1);
+            } else {
+                //use both initials
+                initials = options.userInitials;
+            }
 
+            //process colors
+            style['backgroundColor'] =
+                options.avatarPalette[options.paletteIndex];
         }
 
-        return (
-            <div className={ 'wc-avatar-icon' }>
-                <span className={ 'wc-avatar-text'}>{this.props.initials}</span>
-            </div>
-        );
+        //render initials only if the message is from me (user)
+        if(this.props.fromMe){
+            return (
+                <div className={ iconClass } style={style}>
+                    <span className={ 'wc-avatar-text' }>{initials}</span>
+                </div>
+            );
+        } else {
+            return (
+                <div className={ iconClass } style={style}>
+                </div>
+            );
+        }
     } 
 }
 
@@ -257,35 +285,33 @@ export class WrappedActivity extends React.Component<WrappedActivityProps, {}> {
     render () {
 
         //--------------------------
-        //      Avatar Stuff
+        //      Avatar Configuration
 
-        /*
-         *   Style 1: picture
-         *   Style 2: first initial
-         *   Style 3: both initials
-         */
-        let avatarOption = "1";
-        let avatarInitials = "TA";
-        let avatarVisible = "both"; //'both', 'user', 'bot'
+        let avatarOptions: AvatarOptions;
+        let avatarClassName;
+        if(this.props.format && this.props.format.options && this.props.format.options.avatarOptions){
+            avatarOptions = this.props.format.options.avatarOptions;
 
-        let avatarElement = null;
-        let avatarClass = "";
-        if(avatarOption != null){
-            avatarClass = "wc-has-avatar";
+            // The message must know if it is hiding an avatar or not.
+            // Basically, the message content relies on a calculation relative to the message container's dimensions
+            // that also takes into account the avatar icon dimensions. However, when the icon is hidden, the width
+            // is seen as 0 by the parent, so it shrinks, also shrinking the message content div which is then
+            // unable to fit a hero card.
+            avatarClassName = classList(
+                avatarOptions && "wc-has-avatar",
+                (this.props.fromMe && !this.props.format.options.avatarOptions.showMyAvatar) && "wc-hiding-avatar",
+                (!this.props.fromMe && !this.props.format.options.avatarOptions.showTheirAvatar) && "wc-hiding-avatar"
+            );
+
+        } else {
+            avatarClassName = classList(
+                avatarOptions && "wc-has-avatar"
+            );
         }
-        switch (avatarOption) {
-            case "1":
-                //render image
-                avatarElement = <AvatarElement initials={avatarInitials} />;
-                break;
-            case "2":
-                //render initial
-                break;
-            case "3":
-                //render colored initials
-                break;
-            default:
-                break;
+
+        let avatarElement: JSX.Element; 
+        if(avatarOptions){
+            avatarElement = <AvatarElement options={this.props.format.options.avatarOptions} fromMe={this.props.fromMe} />;
         }
 
         //---------------------------
@@ -330,7 +356,7 @@ export class WrappedActivity extends React.Component<WrappedActivityProps, {}> {
 
         return (
             <div data-activity-id={ this.props.activity.id } className={ wrapperClassName } onClick={ this.props.onClickActivity }>
-                <div className={ 'wc-message wc-message-from-' + who + " " + avatarClass } ref={ div => this.messageDiv = div }>
+                <div className={ 'wc-message wc-message-from-' + who + " " + avatarClassName } ref={ div => this.messageDiv = div }>
                     {avatarElement}
                     <div className={ contentClassName }>
                         <svg className="wc-message-callout">

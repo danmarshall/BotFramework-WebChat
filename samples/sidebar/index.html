@@ -12,6 +12,13 @@
         * webSocket = set to 'true' to use WebSocket to receive messages (currently defaults to false)
         * userid, username = id (and optionally name) of bot user
         * botid, botname = id (and optionally name) of bot
+        * style = 'img' 'firstInitial' or 'bothInitials' for webchat icon style
+        *           img will show user image url
+        *           firstInitial will show first initial of user's name on a colored background
+        *           bothInitials will show both initials of user's name on a colored background
+        * color = the index of desired background color for initials according to colorPalette (see below)
+        * initials = the initials to be rendered against colored background
+        * showbot, showuser = set to 'true' or 'false' to show or hide icon of bot / user
 -->
 <html>
     <head>
@@ -80,11 +87,24 @@
             var user = {
                 id: params['userid'] || 'userid',
                 name: params["username"] || 'username'
-                };
+            };
             
             var bot = {
                 id: params['botid'] || 'botid',
                 name: params["botname"] || 'botname'
+            };
+
+            // if we try to read them directly from params, they are strings instead of bools
+            // so we convert them here
+            let showbot, showuser;
+            (params['showbot'] === 'false') ? showbot = false : showbot = true;
+            (params['showuser'] === 'false') ? showuser = false : showuser = true;
+            var avatar = {
+                showTheirAvatar: showbot || false,
+                showMyAvatar: showuser || false,
+                initials: params['initials'] || 'TA',
+                style: params['style'] || 'img',
+                colorIndex: params['color'] || 0
             };
             
             window['botchatDebug'] = params['debug'] && params['debug'] === "true";
@@ -99,7 +119,30 @@
                 user: user,
                 bot: bot,
                 locale: params['locale'],
-                resize: 'detect'
+                resize: 'detect',
+                formatOptions: {
+                    avatarOptions: {
+                        showTheirAvatar: avatar['showTheirAvatar'],
+                        showMyAvatar: avatar['showMyAvatar'],
+                        avatarStyle: avatar['style'], // img, firstInitial, or bothInitials
+                        userInitials: avatar['initials'],
+                        userImgUrl: "https://imgur.com/gmXBCUZ.png",
+                        paletteIndex: avatar['colorIndex'],
+                        avatarPalette: [
+                            "#721481",
+                            "#000000",
+                            "#767676",
+                            "#E81123",
+                            "#DA3B01",
+                            "#CA5010",
+                            "#10893E",
+                            "#038387",
+                            "#0078d7",
+                            "#9a0089",
+                            "#bf0077"
+                        ]
+                    }
+                }
                 // sendTyping: true,    // defaults to false. set to true to send 'typing' activities to bot (and other users) when user is typing
             }, document.getElementById("BotChatGoesHere"));
         </script>

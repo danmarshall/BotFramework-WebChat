@@ -76,7 +76,16 @@ export const format: Reducer<FormatState> = (
     state: FormatState = {
         locale: 'en-us',
         options: {
-            showHeader: true
+            showHeader: true,
+            avatarOptions: {
+                showMyAvatar: true,
+                showTheirAvatar: true,
+                botImgUrl: "",
+                userImgUrl: "",
+                userInitials: "",
+                avatarStyle: "",
+                avatarPalette: undefined
+            }
         },
         strings: defaultStrings,
         carouselMargin: undefined

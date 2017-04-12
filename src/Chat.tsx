@@ -70,7 +70,7 @@ export class Chat extends React.Component<ChatProps, {}> {
     private store = createStore();
 
     private botConnection: IBotConnection;
-    
+
     private activitySubscription: Subscription;
     private connectionStatusSubscription: Subscription;
     private selectedActivitySubscription: Subscription;
@@ -85,13 +85,13 @@ export class Chat extends React.Component<ChatProps, {}> {
 
         this.store.dispatch<ChatActions>({
             type: 'Set_Locale',
-            locale: props.locale || window.navigator["userLanguage"] || window.navigator.language || 'en'
+            locale: props.locale || (window.navigator as any)["userLanguage"] || window.navigator.language || 'en'
         });
 
         if (props.formatOptions)
             this.store.dispatch<ChatActions>({ type: 'Set_Format_Options', options: props.formatOptions });
         if (props.sendTyping)
-            this.store.dispatch<ChatActions>({ type: 'Set_Send_Typing', sendTyping: props.sendTyping });        
+            this.store.dispatch<ChatActions>({ type: 'Set_Send_Typing', sendTyping: props.sendTyping });
     }
 
     private handleIncomingActivity(activity: Activity) {
@@ -273,7 +273,7 @@ export const classList = (...args:(string | boolean)[]) => {
 
 export const konsole = {
     log: (message?: any, ... optionalParams: any[]) => {
-        if (typeof(window) !== 'undefined' && window["botchatDebug"] && message)
+        if (typeof(window) !== 'undefined' && (window as any)["botchatDebug"] && message)
             console.log(message, ... optionalParams);
     }
 }
@@ -285,5 +285,8 @@ const ResizeDetector = (props: {
     // adapted to React from https://github.com/developit/simple-element-resize-detector
     <iframe
         style={ { position: 'absolute', left: '0', top: '-100%', width: '100%', height: '100%', margin: '1px 0 0', border: 'none', opacity: 0, visibility: 'hidden', pointerEvents: 'none' } }
-        ref={ frame => frame.contentWindow.onresize = props.onresize }
+        ref={ frame => {
+            if (frame)
+                frame.contentWindow.onresize = props.onresize;
+        } }
     />;

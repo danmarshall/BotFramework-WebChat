@@ -347,6 +347,7 @@ export var video_card: dl.Message = {
                 },
                 media: [
                     {
+                        //TODO: change this url
                         url: "https://testbot.botframework.com/media/thenewmicrosoftband2_mid.mp4"
                     }
                 ],

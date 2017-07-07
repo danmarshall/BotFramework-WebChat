@@ -246,6 +246,7 @@ var commands_map: CommandValuesMap = {
             sendActivity(res, server_content.adaptive_cardsFn(json));
         }
     },
+    //TODO: split this into 2 tests
     "imback-postback": {
         client: () => new Promise((resolve) => {
             var buttons = document.querySelectorAll('button');

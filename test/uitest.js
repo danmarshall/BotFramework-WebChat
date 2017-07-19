@@ -1,6 +1,6 @@
 "use strict";
 let commands = require('./commands_map');
-let config = require('./mock_dl_server_config');
+let config = require('./mock_dl/server_config.json');
 let Nightmare = require('nightmare');
 let assert = require('assert');
 let vo = require('vo');
@@ -10,52 +10,86 @@ let nightmare = Nightmare({
 	executionTimeout: 6000
 });
 
-/*
- * 1. Run npm test in "/" 
- * 
- * 2. Executes concurrently webserver from mock_dl (index.js)
- * 
- * 3. And later mocha tests are being executed from this file. 
- * 
- * Note: if it is needed to change index.js, so index.ts must be 
- * updated and compiled. (use: npm run build-test)
- *  
-*/
-describe('Nightmare UI Tests', function () {
-	let keys = Object.keys(commands);
-	this.timeout(keys.length * 20000);
+Nightmare.prototype.do = function (doFn) {
+	if (doFn) {
+		doFn(this);
+	}
+	return this;
+}
 
-	it('evaluates each command described in commands_map.js', function (done) {
-		let host = "http://localhost:" + config["port"].toString();
+describe('nightmare UI tests', function () {
+	let devices = config.widthTests;
+	let keys = Object.keys(commands);
+	this.timeout(devices.length * keys.length * 20000);
+
+	it('Evaluates all UI widthTests for all commands_map file', function (done) {
+		let host = "http://localhost:" + config.port;
 		let domain = host + "/mock";
-		let url = host + "?domain=" +  domain;
+		let url = host + "?domain=" + domain;
+		let tab = "\t";
 		let results = [];
 
-		let testAllCommands = function* () {
-			for (let i = 0; i < keys.length; i++) {
-				console.log("Evaluating: " + keys[i]);
+		let isTrueColor = "\x1b[32m";
+		let isFalseColor = "\x1b[31m";
+		let deviceColor = "\x1b[36m%s\x1b[0m";
+		let resultToConsole = function (result) {
+			result.toString().toLowerCase().includes("true")
+				? console.log(isTrueColor, `${tab}${tab}${result}`)
+				: console.log(isFalseColor, `${tab}${tab}${result}`);
+		}
+		let deviceToConsole = function (device, width) {
+			console.log(deviceColor, `${tab}${device} (width: ${width}px)`);
+		}
 
-				let testUrl = `${url}&t=${keys[i]}/ui`;
+		let testOneCommand = function* (testurl, index, width, consoleLog) {
+			const cmd = keys[index];
+			let result = "";
+			//Starting server and reload the page.
+			if (index == 0) {
+				result = yield nightmare.goto(testurl)
+					.viewport(width, 768);
+			}
 
-				//Starting server and reload the page.
-				if (i == 0) {
-					let result = yield nightmare.goto(testUrl);
-				}
+			result = yield nightmare.goto(testurl)
+				.viewport(width, 768)
+				.wait(2000)
+				.type('.wc-textbox input', cmd)
+				.click('.wc-send')
+				.wait(3000)
+				.do(commands[cmd].do)
+				.evaluate(commands[cmd].client);
 
-				let result = yield nightmare.goto(testUrl)
-					.wait(2000)
-					.type('.wc-textbox input', keys[i])
-					.click('.wc-send')
-					.wait(3000)
-					.evaluate(commands[keys[i]].client)
-
-				if ((keys.length - 1) == i) {
-					result.end()
-				}
-
-				console.log(result);
+			if (result) {
+				resultToConsole(consoleLog + result);
 				results.push(result);
 			}
+		}
+
+		//Testing devices and commands 
+		let testAllCommands = function* () {
+			for (let device in devices) {
+				let width = devices[device];
+				deviceToConsole(device, width);
+
+				for (let cmd_index = 0; cmd_index < keys.length; cmd_index++) {
+					const cmd = keys[cmd_index];
+
+					console.log(`${tab}${tab}Command: ${cmd}`);
+
+					// All tests should be passed under speech enabled environment
+					let testUrl = `${url}&t=${cmd}&speech=enabled/ui`;
+					yield testOneCommand(testUrl, cmd_index, width, "Speech enabled: ")
+
+
+					const speechCmd = /speech[ \t]([^ ]*)/g.exec(cmd);
+					if (!speechCmd || speechCmd.length === 0) {
+						// Non speech specific tests should also be passed under speech disabled environment
+						testUrl = `${url}&t=${cmd}&speech=disabled/ui`;
+						yield testOneCommand(testUrl, cmd_index, width, "Speech disabled: ")
+					}
+				}
+			}
+			yield nightmare.end();
 			return results;
 		}
 

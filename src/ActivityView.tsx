@@ -4,13 +4,14 @@ import { AttachmentView } from './Attachment';
 import { Carousel } from './Carousel';
 import { FormattedText } from './FormattedText';
 import { FormatState, SizeState } from './Store';
+import { IDoCardAction } from './Chat';
 
 const Attachments = (props: {
     attachments: Attachment[],
     attachmentLayout: AttachmentLayout,
     format: FormatState,
     size: SizeState,
-    onCardAction: (type: string, value: string) => void,
+    onCardAction: IDoCardAction,
     onImageLoad: () => void
 }) => {
     const { attachments, attachmentLayout, ... otherProps } = props;
@@ -27,7 +28,9 @@ const Attachments = (props: {
                 <AttachmentView
                     key={ index }
                     attachment={ attachment }
-                    { ... otherProps }
+                    format={ props.format }
+                    onCardAction={ props.onCardAction }
+                    onImageLoad={ props.onImageLoad }
                 />
             ) }
         </div>
@@ -37,7 +40,7 @@ export interface ActivityViewProps {
     format: FormatState,
     size: SizeState,
     activity: Activity,
-    onCardAction: (type: string, value: string) => void,
+    onCardAction: IDoCardAction,
     onImageLoad: () => void
 }
 
@@ -58,7 +61,7 @@ export class ActivityView extends React.Component<ActivityViewProps, {}> {
     }
 
     render() {
-        const { activity, ... otherProps } = this.props;
+        const { activity, ... props } = this.props;
         switch (activity.type) {
             case 'message':
                 return (
@@ -66,12 +69,15 @@ export class ActivityView extends React.Component<ActivityViewProps, {}> {
                         <FormattedText
                             text={ activity.text }
                             format={ activity.textFormat }
-                            onImageLoad={ otherProps.onImageLoad }
+                            onImageLoad={ props.onImageLoad }
                         />
                         <Attachments
                             attachments={ activity.attachments }
                             attachmentLayout={ activity.attachmentLayout }
-                            { ... otherProps }
+                            format={ props.format }
+                            onCardAction={ props.onCardAction }
+                            onImageLoad={ props.onImageLoad }
+                            size={ props.size }
                         />
                     </div>
                 );

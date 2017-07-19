@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { Activity, Message, User } from 'botframework-directlinejs';
+import { Activity, Message, User, CardActionTypes } from 'botframework-directlinejs';
 import { ChatState, FormatState, SizeState } from './Store';
 import { Dispatch, connect } from 'react-redux';
 import { ActivityView } from './ActivityView';
-import { konsole, classList, doCardAction, sendMessage, AvatarOptions } from './Chat';
+import { konsole, classList, doCardAction, IDoCardAction, sendMessage, AvatarOptions } from './Chat';
 
 export interface HistoryProps {
     format: FormatState,
@@ -12,13 +12,13 @@ export interface HistoryProps {
 
     setMeasurements: (carouselMargin: number) => void,
     onClickRetry: (activity: Activity) => void,
-
+    onClickCardAction: () => void,
     setFocus: () => void,
 
     isFromMe: (activity: Activity) => boolean,
     isSelected: (activity: Activity) => boolean,
     onClickActivity: (activity: Activity) => React.MouseEventHandler<HTMLDivElement>,
-    doCardAction: (type: string, value: string) => void
+    doCardAction: IDoCardAction
 }
 
 export class HistoryView extends React.Component<HistoryProps, {}> {
@@ -66,8 +66,13 @@ export class HistoryView extends React.Component<HistoryProps, {}> {
         const vAlignBottomPadding = Math.max(0, measurePaddedHeight(this.scrollMe) - this.scrollContent.offsetHeight);
         this.scrollContent.style.marginTop = vAlignBottomPadding + 'px';
 
-        if (this.scrollToBottom)
+        const lastActivity = this.props.activities[this.props.activities.length - 1];
+        const lastActivityFromMe = lastActivity && this.props.isFromMe && this.props.isFromMe(lastActivity);
+
+        // Validating if we are at the bottom of the list or the last activity was triggered by the user.
+        if (this.scrollToBottom || lastActivityFromMe) {
             this.scrollMe.scrollTop = this.scrollMe.scrollHeight - this.scrollMe.offsetHeight;
+        }
     }
 
     // In order to do their cool horizontal scrolling thing, Carousels need to know how wide they can be.
@@ -97,8 +102,9 @@ export class HistoryView extends React.Component<HistoryProps, {}> {
     // 2. To determine the margins of any given carousel (we just render one mock activity so that we can measure it)
     // 3. (this is also the normal re-render case) To render without the mock activity
 
-    private doCardAction(type: string, value: string) {
+    private doCardAction(type: CardActionTypes, value: string | object) {
         this.props.setFocus();
+        this.props.onClickCardAction();
         return this.props.doCardAction(type, value);
     }
 
@@ -133,7 +139,7 @@ export class HistoryView extends React.Component<HistoryProps, {}> {
                             format={ this.props.format }
                             size={ this.props.size }
                             activity={ activity }
-                            onCardAction={ (type: string, value: string) => this.doCardAction(type, value) }
+                            onCardAction={ (type: CardActionTypes, value: string | object) => this.doCardAction(type, value) }
                             onImageLoad={ () => this.autoscroll() }
                         />
                     </WrappedActivity>
@@ -143,7 +149,7 @@ export class HistoryView extends React.Component<HistoryProps, {}> {
 
         return (
             <div className="wc-message-groups" ref={ div => this.scrollMe = div || this.scrollMe }>
-                <div className="wc-message-group-content" ref={ div => this.scrollContent = div }>
+                <div className="wc-message-group-content" ref={ div => { if (div) this.scrollContent = div }}>
                     { content }
                 </div>
             </div>
@@ -165,6 +171,7 @@ export const History = connect(
     }), {
         setMeasurements: (carouselMargin: number) => ({ type: 'Set_Measurements', carouselMargin }),
         onClickRetry: (activity: Activity) => ({ type: 'Send_Message_Retry', clientActivityId: activity.channelData.clientActivityId }),
+        onClickCardAction: () => ({ type: 'Card_Action_Clicked'}),
         // only used to create helper functions below 
         sendMessage
     }, (stateProps: any, dispatchProps: any, ownProps: any): HistoryProps => ({
@@ -175,6 +182,7 @@ export const History = connect(
         // from dispatchProps
         setMeasurements: dispatchProps.setMeasurements,
         onClickRetry: dispatchProps.onClickRetry,
+        onClickCardAction: dispatchProps.onClickCardAction,
         // from ownProps
         setFocus: ownProps.setFocus,
         // helper functions

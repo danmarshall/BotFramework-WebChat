@@ -1,9 +1,12 @@
 require('dotenv').config();
 
+import * as dl from "../../node_modules/botframework-directlinejs/built/directLine";
 import * as express from 'express';
 import bodyParser = require('body-parser');
 import * as path from 'path';
+import * as fs from 'fs';
 
+const config = require('../mock_dl/server_config.json') as { bot: dl.User, port: number, widthTests: { [id: string]: number } };
 const app = express();
 
 app.use(bodyParser.json()); // for parsing application/json
@@ -19,9 +22,14 @@ const timeout = 60 * 1000;
 const conversationId = "mockversation";
 const expires_in = 1800;
 const streamUrl = "http://nostreamsupport";
+const simpleCard = {
+    "$schema": "https://microsoft.github.io/AdaptiveCards/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "body": []
+};
 
 const get_token = (req: express.Request) =>
-    (req.headers["authorization"] || "works/all").split(" ")[1];
+    (req.header("authorization") || "works/all").split(" ")[1];
 
 const sendExpiredToken = (res: express.Response) => {
     res.status(403).send({ error: { code: "TokenExpired" } });
@@ -41,7 +49,8 @@ app.post('/mock/tokens/generate', (req, res) => {
     res.send({
         conversationId,
         token,
-        expires_in
+        expires_in,
+        timestamp: new Date().toUTCString(),
     });
 });
 
@@ -51,13 +60,14 @@ app.post('/mock/tokens/refresh', (req, res) => {
     res.send({
         conversationId,
         token,
-        expires_in
+        expires_in,
+        timestamp: new Date().toUTCString()
     });
 });
 
 let counter: number;
 let messageId: number;
-let queue: Activity[];
+let queue: dl.Activity[];
 
 app.post('/mock/conversations', (req, res) => {
     counter = 0;
@@ -85,35 +95,18 @@ const startConversation = (req: express.Request, res: express.Response) => {
         conversationId,
         token,
         expires_in,
-        streamUrl
+        streamUrl,
+        timestamp: new Date().toUTCString()
     });
-    sendMessage(res, `Welcome to MockBot! Here is test ${test} on area ${area}`);
-}
-
-interface Activity {
-    type: string,
-    timestamp?: string,
-    textFormat?: string,
-    text?: string,
-    channelId?: string,
-    attachmentLayout?: string,
-    attachments?: Attachment,
-    id?: string,
-    from?: { id?: string, name?: string }
-}
-
-interface Attachment {
-
-}
-
-const sendMessage = (res: express.Response, text: string) => {
-    queue.push({
+    sendActivity(res, {
         type: "message",
-        text
-    })
+        text: "Welcome to MockBot!",
+        timestamp: new Date().toUTCString(),
+        from: config.bot
+    });
 }
 
-const sendActivity = (res: express.Response, activity: Activity) => {
+const sendActivity = (res: express.Response, activity: dl.Activity) => {
     queue.push(activity)
 }
 
@@ -140,37 +133,83 @@ const postMessage = (req: express.Request, res: express.Response) => {
     const id = messageId++;
     res.send({
         id,
+        timestamp: new Date().toUTCString()
     });
     processCommand(req, res, req.body.text, id);
 }
 
-// Getting testing commands from map 
-let commands = require('../commands_map');
+const printCommands = () => {
+    let cmds = "### Commands\r\n\r\n";
+    for (var command in commands) {
+        cmds += `* ${command}\r\n`;
+    }
+    return cmds;
+}
+
+// Getting testing commands from map and server config
+const commands = require('../commands_map');
+let current_uitests = 0;
+let uitests_files = Object.keys(config.widthTests).length;
+
 
 const processCommand = (req: express.Request, res: express.Response, cmd: string, id: number) => {
+
     if (commands[cmd] && commands[cmd].server) {
-        commands[cmd].server(res, sendActivity);
-    }
-    else {
+        //look for "card ..." prefix on command
+        const cardsCmd = /card[ \t]([^ ]*)/g.exec(cmd);
+        if (cardsCmd && cardsCmd.length > 0) {
+            const cardName = cardsCmd[1];
+            getCardJsonFromFs(cardName).then(cardJson => {
+                //execute the server, with the card json from the file system
+                commands[cmd].server(res, sendActivity, cardJson);
+            }).catch((err) => { throw err });
+        } else {
+            //execute the server
+            commands[cmd].server(res, sendActivity);
+        }
+    } else {
         switch (cmd) {
+            case 'help':
+                sendActivity(res, {
+                    type: "message",
+                    timestamp: new Date().toUTCString(),
+                    channelId: "webchat",
+                    text: printCommands(),
+                    from: config.bot
+                });
+                return;
             case 'end':
-                setTimeout(
-                    () => {
-                        process.exitCode = 0;
-                        process.exit();
-                    }, 3000);
+                current_uitests++; // For each end command, we will excute twice
+                if (uitests_files * 2 <= current_uitests) {
+                    setTimeout(
+                        () => {
+                            process.exitCode = 0;
+                            process.exit();
+                        }, 3000);
+                }
+                else {
+                    sendActivity(res, {
+                        type: "message",
+                        timestamp: new Date().toUTCString(),
+                        channelId: "webchat",
+                        text: "echo: " + req.body.text,
+                        from: config.bot
+                    });
+                }
                 return;
             default:
                 sendActivity(res, {
                     type: "message",
                     timestamp: new Date().toUTCString(),
                     channelId: "webchat",
-                    text: "echo: " + req.body.text
+                    text: "echo: " + req.body.text,
+                    from: config.bot
                 });
                 return;
         }
     }
 }
+
 
 app.post('/mock/conversations/:conversationId/upload', (req, res) => {
     const token = get_token(req);
@@ -195,6 +234,7 @@ const upload = (req: express.Request, res: express.Response) => {
     const id = messageId++;
     res.send({
         id,
+        timestamp: new Date().toUTCString()
     });
 }
 
@@ -218,23 +258,42 @@ app.get('/mock/conversations/:conversationId/activities', (req, res) => {
 });
 
 const getMessages = (req: express.Request, res: express.Response) => {
-    if (queue.length > 0) {
-        let msg = queue.shift();
-        let id = messageId++;
-        msg.id = id.toString();
-        msg.from = { id: "id", name: "name" };
-        res.send({
-            activities: [msg],
-            watermark: id
-        });
-    } else {
-        res.send({
-            activities: [],
-            watermark: messageId
-        })
+    if (queue) {
+        if (queue.length > 0) {
+            const msg = queue.shift();
+            const id = messageId++;
+            msg.id = id.toString();
+            msg.from = { id: "id", name: "name" };
+            res.send({
+                activities: [msg],
+                watermark: id,
+                timestamp: new Date().toUTCString()
+            });
+        } else {
+            res.send({
+                activities: [],
+                watermark: messageId,
+                timestamp: new Date().toUTCString()
+            })
+        }
     }
 }
 
+const getCardJsonFromFs = (fsName: string): Promise<any> => {
+    return readFileAsync('./test/cards/' + fsName + '.json')
+        .then(function (res) {
+            return JSON.parse(res);
+        });
+}
+
+const readFileAsync = (filename: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filename, (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+        });
+    });
+}
 app.get('/', function (req, res) {
     res.sendFile(path.join(__dirname + "/../test.html"));
 });
@@ -247,14 +306,19 @@ app.get('/botchat.css', function (req, res) {
 app.get('/botchat-fullwindow.css', function (req, res) {
     res.sendFile(path.join(__dirname + "/../../botchat-fullwindow.css"));
 });
-app.get('/assets/:file', function(req, res){
-    var file = req.params["file"];
-    res.sendFile(path.join(__dirname + "/../assets/" + file));    
+app.get('/mock_speech.js', function (req, res) {
+    res.sendFile(path.join(__dirname + "/../mock_speech/index.js"));
+});
+app.get('/assets/:file', function (req, res) {
+    const file = req.params["file"];
+    res.sendFile(path.join(__dirname + "/../assets/" + file));
 });
 
-let config = require('../mock_dl_server_config');
-
-// Running Web Server and DirectLine Client on port
-app.listen(process.env.port || process.env.PORT || config["port"], () => {
-    console.log('listening on ' + config["port"]);
-});
+//do not listen unless being called from the command line
+if (!module.parent) {
+    
+    // Running Web Server and DirectLine Client on port
+    app.listen(process.env.port || process.env.PORT || config.port, () => {
+        console.log('listening on ' + config.port);
+    });
+}
